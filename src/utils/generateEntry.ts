@@ -6,6 +6,15 @@ export async function generateEntry(
   signal?: AbortSignal
 ): Promise<{ entry: string; songQuery: string }> {
   try {
+    // Check if already aborted before starting
+    if (signal?.aborted) {
+      // Return default values silently instead of throwing an error
+      return {
+        entry: "The dream faded before it was written.",
+        songQuery: "chill lofi",
+      };
+    }
+    
     const response = await fetch("/api/generate-entry", {
       method: "POST",
       headers: {
@@ -22,7 +31,16 @@ export async function generateEntry(
 
     const data = await response.json();
     return data;
-  } catch (error) {
+  } catch (error: any) {
+    // Don't log or throw for AbortError since it's expected behavior
+    if (error.name === "AbortError" || error.message === "Request was aborted") {
+      // Return default values silently
+      return {
+        entry: "The dream faded before it was written.",
+        songQuery: "chill lofi",
+      };
+    }
+    
     console.error("Error generating entry:", error);
     return {
       entry: "The dream faded before it was written.",

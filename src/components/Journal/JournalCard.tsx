@@ -85,6 +85,7 @@ export default function JournalCard({
 
       {/* Journal Body */}
       <div className="flex flex-col  gap-4">
+      <div className="text-3xl">{vibe.pet}</div>
         <div className="text-lg leading-relaxed  overflow-y-auto whitespace-break-spaces">
           {journal}
         </div>

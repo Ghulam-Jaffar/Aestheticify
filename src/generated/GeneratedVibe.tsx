@@ -54,49 +54,78 @@ export default function GeneratedVibe({
   }, []);
 
   useEffect(() => {
+    // Create a new controller for each effect run
     const controller = new AbortController();
-    const signal = controller.signal;
-
+    
+    // Set initial states
     const newVibe = generateVibe();
     setVibe(newVibe);
     setShowEntry(false);
     setJournal(null);
     setLoading(true);
 
+    // Define a flag to track component mount state
+    let isMounted = true;
+
     // Wrap async logic in its own function
     const generate = async () => {
       try {
-        // Check if already aborted before starting
-        if (signal.aborted) return;
+        // Only proceed if still mounted
+        if (!isMounted) return;
         
-        const { entry, songQuery } = await generateEntry(newVibe, signal);
-        if (signal.aborted) return;
+        // Use try/catch for each async operation
+        let result;
+        try {
+          result = await generateEntry(newVibe, controller.signal);
+        } catch (e) {
+          // Silently fail if not mounted
+          if (!isMounted) return;
+          throw e;
+        }
+        
+        // Check mount state again
+        if (!isMounted) return;
 
-        const trackUrl = await fetchSpotifyTrack(songQuery, signal);
-        if (signal.aborted) return;
+        // Try to fetch track
+        let trackUrl;
+        try {
+          trackUrl = await fetchSpotifyTrack(result.songQuery, controller.signal);
+        } catch (e) {
+          // Silently fail if not mounted
+          if (!isMounted) return;
+          // Continue without track if there's an error
+        }
 
-        setJournal(entry);
+        // Final mount check before updating state
+        if (!isMounted) return;
+        
+        setJournal(result.entry);
         if (trackUrl) {
           setVibe((prev) => ({ ...prev, trackUrl }));
         }
         setLoading(false);
-      } catch (err: any) {
-        // Only log errors that aren't related to aborting
-        if (!signal.aborted && err.name !== "AbortError") {
+      } catch (err) {
+        // Only update state and log if still mounted
+        if (isMounted) {
           console.error("Error in vibe generation:", err);
-        }
-        
-        // Make sure to reset loading state even on error
-        if (!signal.aborted) {
           setLoading(false);
         }
       }
     };
 
+    // Start the generation process
     generate();
 
+    // Cleanup function
     return () => {
-      controller.abort("Component unmounted or remixed");
+      isMounted = false;
+      
+      // Use a try/catch to prevent any errors during abort
+      try {
+        controller.abort();
+      } catch (e) {
+        // Silently ignore any abort errors
+      }
     };
   }, [remixCount]);
 
