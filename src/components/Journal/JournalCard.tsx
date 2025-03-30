@@ -62,6 +62,27 @@ export default function JournalCard({
     }
   };
 
+  // Helper function to extract the journal entry text
+  const extractJournalEntry = (rawText: string): string => {
+    const entryStartMarker = "**Journal Entry:**";
+
+    const startIndex = rawText.indexOf(entryStartMarker);
+    if (startIndex === -1) {
+      // If marker not found, assume the whole text is the entry
+      // or maybe it's the default error message.
+      return rawText.trim();
+    }
+
+    // Extract text after the marker
+    let entryText = rawText.substring(startIndex + entryStartMarker.length);
+
+    // Clean up leading/trailing whitespace and markdown formatting
+    // (Handles potential italics or bold around the entry itself)
+    return entryText.trim().replace(/^[*_\s]+|[*_\s]+$/g, "").trim();
+  };
+
+  const displayJournal = extractJournalEntry(journal);
+
   return (
     <div className="relative bg-white/10 text-white max-w-xl w-full mx-4 p-6 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-2xl">
       {/* Close Button */}
@@ -86,7 +107,7 @@ export default function JournalCard({
       {/* Journal Body */}
       <div className="flex flex-col  gap-4">
         <div className="text-lg leading-relaxed  overflow-y-auto whitespace-break-spaces">
-          {journal}
+          {displayJournal}
         </div>
 
         {/* Spotify Preview */}

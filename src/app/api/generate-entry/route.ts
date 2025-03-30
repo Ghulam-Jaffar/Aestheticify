@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,8 +13,7 @@ export async function POST(request: NextRequest) {
 - Quote: "${quote}"
 
 Keep it dreamlike, surreal, and under 60 words.
-Then suggest a fitting song for this vibe in the format:
-Song: [song name] by [artist]`;
+Start the response directly with "**Journal Entry:**" followed by the entry text. Do not include any other text before or after the entry.`;
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -33,7 +32,7 @@ Song: [song name] by [artist]`;
     );
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       return NextResponse.json(
         { error: data.error || "Failed to generate entry" },
@@ -45,12 +44,9 @@ Song: [song name] by [artist]`;
       data?.choices?.[0]?.message?.content ||
       "The dream faded before it was written.";
 
-    const entryMatch = content.match(/Entry:\s*([\s\S]*?)\nSong:/i);
-    const songMatch = content.match(/Song:\s*(.+)/i);
-
+    // Return the cleaned content directly, frontend will handle markdown
     return NextResponse.json({
-      entry: cleanAIResponse(entryMatch?.[1] ?? content),
-      songQuery: songMatch?.[1]?.trim() ?? "chill lofi",
+      entry: cleanAIResponse(content),
     });
   } catch (error) {
     console.error("Error generating entry:", error);
