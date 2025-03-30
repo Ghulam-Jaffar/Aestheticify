@@ -66,6 +66,9 @@ export default function GeneratedVibe({
     // Wrap async logic in its own function
     const generate = async () => {
       try {
+        // Check if already aborted before starting
+        if (signal.aborted) return;
+        
         const { entry, songQuery } = await generateEntry(newVibe, signal);
         if (signal.aborted) return;
 
@@ -78,8 +81,14 @@ export default function GeneratedVibe({
         }
         setLoading(false);
       } catch (err: any) {
-        if (err.name !== "AbortError") {
+        // Only log errors that aren't related to aborting
+        if (!signal.aborted && err.name !== "AbortError") {
           console.error("Error in vibe generation:", err);
+        }
+        
+        // Make sure to reset loading state even on error
+        if (!signal.aborted) {
+          setLoading(false);
         }
       }
     };
@@ -87,7 +96,7 @@ export default function GeneratedVibe({
     generate();
 
     return () => {
-      controller.abort();
+      controller.abort("Component unmounted or remixed");
     };
   }, [remixCount]);
 

@@ -65,7 +65,7 @@ export default function SharedEntryPage() {
   if (!entry) return null;
 
   return (
-    <div className="pt-16">
+    <div className="w-full h-screen flex items-center justify-center pt-16">
       <ShareVibeModal
         id={entry.id}
         title={entry.title}

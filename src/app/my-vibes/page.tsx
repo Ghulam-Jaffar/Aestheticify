@@ -7,6 +7,7 @@ import { db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { Vibe } from "@/types/VibeComponent";
 import AuthButton from "@/components/AuthButton";
+import { motion } from "framer-motion";
 
 interface VibeEntry {
   id: string;
@@ -23,34 +24,90 @@ export default function MyVibesPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
 
+  // Separate authentication check from data fetching
   useEffect(() => {
     const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
         setUserId(null);
         setLoading(false);
         return;
       }
-
+      
       setUserId(user.uid);
-      const userVibesRef = collection(db, "users", user.uid, "vibes");
-      const q = query(userVibesRef, orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const fetched = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as VibeEntry[];
-      setVibes(fetched);
-      setLoading(false);
+      // Only set loading to false after we confirm user is logged in
+      // Data fetching will happen in the next useEffect
     });
 
     return () => unsubscribe();
   }, []);
 
+  // Separate data fetching effect that runs only after userId is set
+  useEffect(() => {
+    async function fetchVibes() {
+      if (!userId) return;
+      
+      try {
+        setLoading(true);
+        const userVibesRef = collection(db, "users", userId, "vibes");
+        const q = query(userVibesRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const fetched = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as VibeEntry[];
+        setVibes(fetched);
+      } catch (error) {
+        console.error("Error fetching vibes:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (userId) {
+      fetchVibes();
+    }
+  }, [userId]);
+
+  // Container animations
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { 
+      opacity: 1,
+      transition: { 
+        duration: 0.6,
+        when: "beforeChildren",
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  // Item animations
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { 
+      y: 0, 
+      opacity: 1,
+      transition: { duration: 0.4 }
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-white">
-        <p className="text-lg animate-pulse">Loading your saved vibes...</p>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <p className="text-lg animate-pulse mb-2">Loading your saved vibes...</p>
+          <div className="flex justify-center space-x-2">
+            <div className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+            <div className="w-3 h-3 bg-pink-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+            <div className="w-3 h-3 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -58,47 +115,118 @@ export default function MyVibesPage() {
   if (!userId) {
     return (
       <div className="w-full h-screen flex items-center justify-center text-white text-center px-4">
-        <div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="bg-black/30 backdrop-blur-lg p-8 rounded-2xl border border-white/10 max-w-md w-full"
+        >
           <h2 className="text-2xl font-bold mb-4">🔐 Login Required</h2>
-          <p className="mb-2">You need to be logged in to see your saved vibes.</p>
+          <p className="mb-6 text-gray-300">Sign in to view and manage your saved vibes collection.</p>
           <AuthButton />
-        </div>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push("/")}
+            className="mt-4 text-sm text-gray-400 hover:text-white transition-colors"
+          >
+            ← Return to Vibes
+          </motion.button>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen px-4 pt-24 pb-10 text-white">
-      <h1 className="text-3xl font-bold mb-6 text-center">🌟 My Saved Vibes</h1>
+    <motion.div 
+      initial="hidden"
+      animate="visible"
+      variants={containerVariants}
+      className="min-h-screen px-4 pt-24 pb-16 text-white"
+    >
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="mb-10 text-center"
+      >
+        <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+          My Saved Vibes
+        </h1>
+        <p className="text-gray-300 max-w-lg mx-auto">
+          Your personal collection of saved aesthetic experiences
+        </p>
+      </motion.div>
 
       {vibes.length === 0 ? (
-        <p className="text-center opacity-60">
-          No saved vibes yet. Go vibe and click save ✨
-        </p>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="text-center max-w-md mx-auto bg-white/5 backdrop-blur-sm p-8 rounded-xl border border-white/10"
+        >
+          <div className="text-5xl mb-4">✨</div>
+          <h3 className="text-xl font-medium mb-2">No saved vibes yet</h3>
+          <p className="text-gray-400 mb-6">
+            Start creating and saving vibes to build your collection
+          </p>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => router.push("/")}
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-medium hover:opacity-90 transition-opacity"
+          >
+            Create New Vibe
+          </motion.button>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <motion.div 
+          variants={containerVariants}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
           {vibes.map((v) => (
-            <div
+            <motion.div
               key={v.id}
-              className={`rounded-xl p-4 border border-white/20 bg-white/10 backdrop-blur ${v.vibe.bg} ${v.vibe.font}`}
+              variants={itemVariants}
+              whileHover={{ y: -5, transition: { duration: 0.2 } }}
+              className={`rounded-xl p-6 border border-white/20 bg-white/10 backdrop-blur shadow-lg ${v.vibe.bg} ${v.vibe.font} cursor-pointer`}
+              onClick={() => router.push(`/entry/${v.id}`)}
             >
-              <div className="text-2xl mb-2">{v.vibe.pet}</div>
-              <p className="italic text-sm mb-2">"{v.vibe.quote}"</p>
-              <p className="text-xs opacity-50 mb-3">
-                {v.createdAt
-                  ? new Date(v.createdAt.seconds * 1000).toLocaleString()
-                  : "Unknown date"}
-              </p>
-              <button
-                onClick={() => router.push(`/entry/${v.id}`)}
-                className="text-sm underline hover:opacity-80 cursor-pointer"
-              >
-                🔗 View Vibe
-              </button>
-            </div>
+              <div className="flex justify-between items-start mb-3">
+                <div className="text-3xl">{v.vibe.pet}</div>
+                <div className="text-xs opacity-60 bg-black/20 px-2 py-1 rounded-full">
+                  {v.createdAt
+                    ? new Date(v.createdAt.seconds * 1000).toLocaleDateString()
+                    : "Unknown date"}
+                </div>
+              </div>
+              <p className="italic text-sm mb-4 line-clamp-2">"{v.vibe.quote}"</p>
+              <div className="flex justify-between items-center">
+                <p className="text-xs opacity-70">
+                  {v.journal ? v.journal.substring(0, 30) + "..." : "No journal entry"}
+                </p>
+                <span className="text-sm underline hover:opacity-80">View →</span>
+              </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
-    </div>
+      
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        className="mt-10 text-center"
+      >
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push("/")}
+          className="px-5 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm transition-colors cursor-pointer"
+        >
+          ← Back to Vibes
+        </motion.button>
+      </motion.div>
+    </motion.div>
   );
 }

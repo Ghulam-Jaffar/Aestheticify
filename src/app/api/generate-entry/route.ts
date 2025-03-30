@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cleanAIResponse } from "@/utils/generateEntry";
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,11 +56,4 @@ Start the response directly with "**Journal Entry:**" followed by the entry text
       { status: 500 }
     );
   }
-}
-
-function cleanAIResponse(text: string): string {
-  return text
-    .trim()
-    .replace(/^["\s]+|["\s]+$/g, "") // Remove quotes and extra spaces
-    .replace(/\\n/g, "\n"); // Replace literal \n with newlines
 }
