@@ -2,8 +2,6 @@
 
 Aestheticify is an immersive web application that creates visual and audio experiences called "vibes." It allows users to escape into different themed environments, save journal entries with their favorite vibes, and share their experiences with others.
 
-![Aestheticify](https://i.imgur.com/example.png)
-
 ## Features
 
 - **Immersive Environments**: Experience various themed environments like Cozy Rain, Neon Dream, Dreamcore Cloud, and more
