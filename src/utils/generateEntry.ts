@@ -31,14 +31,23 @@ export async function generateEntry(
   }
 }
 
-export function cleanAIResponse(raw: string): string {
-  if (!raw) return "";
+export function cleanAIResponse(rawText: string): string {
+  if (!rawText) return "";
 
-  let cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-  cleaned = cleaned.replace(/> \*\*Journal Entry:.*?\*\*/gi, "").trim();
-  cleaned = cleaned.replace(/^>+/gm, "").trim();
-  cleaned = cleaned.replace(/\*\*/g, "");
-  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  // Extract journal entry from the response
+  const entryStartMarker = "**Journal Entry:**";
 
-  return cleaned;
+  const startIndex = rawText.indexOf(entryStartMarker);
+  if (startIndex === -1) {
+    // If marker not found, assume the whole text is the entry
+    // or maybe it's the default error message.
+    return rawText.trim();
+  }
+
+  // Extract text after the marker
+  let entryText = rawText.substring(startIndex + entryStartMarker.length);
+
+  // Clean up leading/trailing whitespace and markdown formatting
+  // (Handles potential italics or bold around the entry itself)
+  return entryText.trim().replace(/^[*_\s]+|[*_\s]+$/g, "").trim();
 }
