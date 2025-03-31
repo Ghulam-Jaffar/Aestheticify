@@ -29,9 +29,26 @@ export default function VibeLayout({
   children,
 }: VibeLayoutProps) {
   const [cycleMode, setCycleMode] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const showAudioToggle = current !== "random";
   const [scope, animate] = useAnimate();
   const [isPresent, safeToRemove] = usePresence();
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Add resize listener
+    window.addEventListener("resize", checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Set up cycling through vibes if enabled
   useEffect(() => {
@@ -180,7 +197,12 @@ export default function VibeLayout({
                 variants={controlItemVariants}
                 className="pointer-events-auto"
               >
-                <VibeSwitcher current={current} onChange={onChange} theme={theme} />
+                <VibeSwitcher 
+                  current={current} 
+                  onChange={onChange} 
+                  theme={theme} 
+                  isMobile={isMobile}
+                />
               </motion.div>
               
               {showAudioToggle && (
@@ -199,43 +221,37 @@ export default function VibeLayout({
                 <SynthPet theme={theme} />
               </motion.div>
 
-              {current !== "random" && (
-                <motion.div 
-                  className="absolute bottom-4 left-4 z-50 pointer-events-auto"
-                  variants={controlItemVariants}
-                  initial="rest"
+              <motion.div 
+                variants={controlItemVariants}
+                className="absolute bottom-6 right-6 pointer-events-auto"
+              >
+                <FloatingQuotes theme={theme} />
+              </motion.div>
+
+              <motion.div 
+                variants={controlItemVariants}
+                className="absolute bottom-6 left-6 pointer-events-auto"
+              >
+                <motion.div
+                  variants={buttonVariants}
                   whileHover="hover"
                   whileTap="tap"
                 >
-                  <motion.div variants={buttonVariants}>
-                    <Button
-                      onClick={() => setCycleMode((prev) => !prev)}
-                      theme={theme}
-                    >
-                      {cycleMode ? "🔁 Cycling On" : "⏹️ Cycling Off"}
-                    </Button>
-                  </motion.div>
+                  <Button
+                    onClick={() => setCycleMode(!cycleMode)}
+                    theme={theme}
+                    className={`
+                      transition-all duration-300
+                      ${cycleMode ? "ring-2" : ""}
+                      ${theme === "light" ? "ring-black" : "ring-white"}
+                    `}
+                  >
+                    {cycleMode ? "🔄 Auto-cycling ON" : "⏸️ Auto-cycling OFF"}
+                  </Button>
                 </motion.div>
-              )}
-            </motion.div>
+              </motion.div>
 
-            <motion.div 
-              className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{ 
-                opacity: 1,
-                transition: { 
-                  delay: 1.2,
-                  duration: 1.5,
-                  ease: "easeInOut"
-                }
-              }}
-              exit={{ 
-                opacity: 0,
-                transition: { duration: 0.3 }
-              }}
-            >
-              <FloatingQuotes theme={theme} />
+              
             </motion.div>
           </motion.div>
         )}

@@ -4,7 +4,7 @@ import { Vibe } from "@/types/VibeComponent";
 export async function generateEntry(
   vibe: Vibe,
   signal?: AbortSignal
-): Promise<{ entry: string; songQuery: string }> {
+): Promise<{ entry: string; songQuery: string; title?: string }> {
   try {
     // Check if already aborted before starting
     if (signal?.aborted) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Howl } from "howler";
 import Button from "@/components/UI/Button";
 import { generateEntry } from "@/utils/generateEntry";
@@ -19,7 +19,7 @@ import { Vibe } from "@/types/VibeComponent";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Background animation components
-const FloatingParticles = () => {
+const FloatingParticles = React.memo(() => {
   // Create fixed positions that are guaranteed to be spread out
   const fixedPositions = [
     { x: 55, y: 15 },
@@ -65,10 +65,12 @@ const FloatingParticles = () => {
       ))}
     </div>
   );
-};
+});
+
+FloatingParticles.displayName = 'FloatingParticles';
 
 // Simplified glowing orbs with fixed positions
-const GlowingOrbs = () => {
+const GlowingOrbs = React.memo(() => {
   // Create fixed positions for larger orbs
   const orbPositions = [
     { x: 65, y: 25, size: 150 },
@@ -102,7 +104,9 @@ const GlowingOrbs = () => {
       ))}
     </div>
   );
-};
+});
+
+GlowingOrbs.displayName = 'GlowingOrbs';
 
 type Theme = "light" | "dark";
 
@@ -115,9 +119,11 @@ interface Props {
 // Type for the different vibe themes
 type VibeTheme = "random" | "aesthetic" | "minimal" | "vibrant" | "nostalgic" | "dreamy" | "glitch" | "cozy";
 
+// Utility function to pick a random item from an array
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-function generateVibe(vibeTheme: VibeTheme = "random"): Vibe {
+// Function to generate a vibe based on the selected theme
+const generateVibe = (vibeTheme: VibeTheme = "random"): Vibe => {
   // For random theme, use the full pools
   if (vibeTheme === "random") {
     return {
@@ -139,27 +145,47 @@ function generateVibe(vibeTheme: VibeTheme = "random"): Vibe {
     quote: pick(themePool.captions),
     audio: pick(audios), // Always use all audio options
   };
-}
+};
+
+// Theme options for the remix dropdown
+const themeOptionsList: {type: VibeTheme, emoji: string, label: string}[] = [
+  { type: "random", emoji: "🎲", label: "Random" },
+  { type: "aesthetic", emoji: "🌸", label: "Aesthetic" },
+  { type: "minimal", emoji: "◻️", label: "Minimal" },
+  { type: "vibrant", emoji: "🌈", label: "Vibrant" },
+  { type: "nostalgic", emoji: "📼", label: "Nostalgic" },
+  { type: "dreamy", emoji: "🌙", label: "Dreamy" },
+  { type: "glitch", emoji: "👾", label: "Glitch" },
+  { type: "cozy", emoji: "🧸", label: "Cozy" },
+];
 
 export default function GeneratedVibe({
   theme = "dark",
   showEntry,
   setShowEntry,
 }: Props) {
+  // State management
   const [vibe, setVibe] = useState<Vibe>(generateVibe());
   const [journal, setJournal] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const soundRef = useRef<Howl | null>(null);
   const [remixCount, setRemixCount] = useState(0);
   const [vibeTheme, setVibeTheme] = useState<VibeTheme>("random");
   const [showThemeOptions, setShowThemeOptions] = useState(false);
+  const [journalTitle, setJournalTitle] = useState<string | null>(null);
+  const [vibeId, setVibeId] = useState<string | null>(null);
+  const [hasJournalBeenSaved, setHasJournalBeenSaved] = useState(false);
+  
+  // Refs
+  const soundRef = useRef<Howl | null>(null);
 
+  // Listen for remix events
   useEffect(() => {
     const handleRemix = () => setRemixCount((prev) => prev + 1);
     window.addEventListener("remix-vibe", handleRemix);
     return () => window.removeEventListener("remix-vibe", handleRemix);
   }, []);
 
+  // Generate a new vibe and journal entry when remixCount or vibeTheme changes
   useEffect(() => {
     // Create a new controller for each effect run
     const controller = new AbortController();
@@ -180,12 +206,11 @@ export default function GeneratedVibe({
         // Only proceed if still mounted
         if (!isMounted) return;
         
-        // Use try/catch for each async operation
+        // Generate the journal entry
         let result;
         try {
           result = await generateEntry(newVibe, controller.signal);
         } catch (e) {
-          // Silently fail if not mounted
           if (!isMounted) return;
           throw e;
         }
@@ -193,12 +218,11 @@ export default function GeneratedVibe({
         // Check mount state again
         if (!isMounted) return;
 
-        // Try to fetch track
+        // Try to fetch a matching Spotify track
         let trackUrl;
         try {
           trackUrl = await fetchSpotifyTrack(result.songQuery, controller.signal);
         } catch (e) {
-          // Silently fail if not mounted
           if (!isMounted) return;
           // Continue without track if there's an error
         }
@@ -206,7 +230,9 @@ export default function GeneratedVibe({
         // Final mount check before updating state
         if (!isMounted) return;
         
+        // Update state with the generated content
         setJournal(result.entry);
+        setJournalTitle(result.title || null);
         if (trackUrl) {
           setVibe((prev) => ({ ...prev, trackUrl }));
         }
@@ -227,17 +253,21 @@ export default function GeneratedVibe({
     return () => {
       isMounted = false;
       
-      // Use a try/catch to prevent any errors during abort
+      // Abort any pending requests
       try {
         controller.abort();
       } catch (e) {
         // Silently ignore any abort errors
       }
     };
-  }, [remixCount, vibeTheme]);
+  }, [remixCount, vibeTheme, setShowEntry]);
 
+  // Handle audio playback when vibe.audio changes
   useEffect(() => {
+    // Clean up previous audio
     if (soundRef.current) soundRef.current.unload();
+    
+    // Create and play new audio
     const sound = new Howl({
       src: [vibe.audio],
       loop: true,
@@ -245,39 +275,40 @@ export default function GeneratedVibe({
     });
     sound.play();
     soundRef.current = sound;
+    
+    // Cleanup on unmount
     return () => {
-      sound.unload(); // cleanly handled now
+      sound.unload();
     };
   }, [vibe.audio]);
 
-  const handleRemix = (theme: VibeTheme) => {
+  // Handlers
+  const handleRemix = useCallback((theme: VibeTheme) => {
     setVibeTheme(theme);
     setRemixCount(prev => prev + 1);
     setShowThemeOptions(false);
-  };
+  }, []);
 
-  const themeOptionsList: {type: VibeTheme, emoji: string, label: string}[] = [
-    { type: "random", emoji: "🎲", label: "Random" },
-    { type: "aesthetic", emoji: "🌸", label: "Aesthetic" },
-    { type: "minimal", emoji: "◻️", label: "Minimal" },
-    { type: "vibrant", emoji: "🌈", label: "Vibrant" },
-    { type: "nostalgic", emoji: "📼", label: "Nostalgic" },
-    { type: "dreamy", emoji: "🌙", label: "Dreamy" },
-    { type: "glitch", emoji: "👾", label: "Glitch" },
-    { type: "cozy", emoji: "🧸", label: "Cozy" },
-  ];
+  const toggleThemeOptions = useCallback(() => {
+    setShowThemeOptions(prev => !prev);
+  }, []);
+
+  const toggleJournal = useCallback(() => {
+    setShowEntry(prev => !prev);
+  }, [setShowEntry]);
 
   return (
     <div
       className={`w-full h-full ${vibe.bg} ${vibe.font} text-white flex flex-col items-center justify-center relative overflow-hidden transition-all duration-1000`}
     >
-      {/* Background animations - positioned behind content but visible across the entire screen */}
+      {/* Background animations */}
       <FloatingParticles />
       <GlowingOrbs />
       
-      {/* Subtle overlay to ensure text readability */}
+      {/* Overlay for text readability */}
       <div className="absolute inset-0 bg-gradient-radial from-transparent to-black/30 pointer-events-none z-20" />
       
+      {/* Main content */}
       <div className="z-40 pointer-events-auto relative flex flex-col items-center">
         <motion.h1 
           className="text-5xl font-bold drop-shadow-xl mb-4"
@@ -287,6 +318,7 @@ export default function GeneratedVibe({
         >
           🎲 Random Vibe
         </motion.h1>
+        
         <motion.div 
           className="text-4xl mb-4"
           initial={{ scale: 0.5, opacity: 0 }}
@@ -295,6 +327,7 @@ export default function GeneratedVibe({
         >
           {vibe.pet}
         </motion.div>
+        
         <motion.p 
           className="text-lg opacity-80 max-w-md text-center mb-6"
           initial={{ opacity: 0 }}
@@ -304,15 +337,17 @@ export default function GeneratedVibe({
           {vibe.quote}
         </motion.p>
 
+        {/* Action buttons */}
         <div className="flex gap-4 mb-4">
           <div className="relative">
             <Button
-              onClick={() => setShowThemeOptions(!showThemeOptions)}
+              onClick={toggleThemeOptions}
               theme={theme}
             >
               🔀 Remix Vibe
             </Button>
             
+            {/* Theme options dropdown */}
             <AnimatePresence>
               {showThemeOptions && (
                 <motion.div 
@@ -344,13 +379,15 @@ export default function GeneratedVibe({
             </AnimatePresence>
           </div>
           
+          {/* Journal button - only show if journal exists */}
           {journal && (
-            <Button onClick={() => setShowEntry((prev) => !prev)} theme={theme}>
+            <Button onClick={toggleJournal} theme={theme}>
               {showEntry ? "📓 Hide Journal" : "📓 Read Journal"}
             </Button>
           )}
         </div>
 
+        {/* Loading indicator */}
         {loading && (
           <p className="mt-2 text-sm opacity-50 italic animate-pulse">
             Generating journal entry...
@@ -358,17 +395,29 @@ export default function GeneratedVibe({
         )}
       </div>
 
-      {showEntry && journal && (
-        <Modal onClose={() => setShowEntry(false)} custom>
-          <JournalCard
-            vibe={vibe}
-            journal={journal}
-            trackUrl={vibe.trackUrl}
-            onClose={() => setShowEntry(false)}
-            theme={theme}
-          />
-        </Modal>
-      )}
+      {/* Journal modal */}
+      <AnimatePresence>
+        {showEntry && journal && (
+          <Modal onClose={toggleJournal} custom>
+            <JournalCard
+              journal={journal}
+              setJournal={setJournal}
+              onClose={toggleJournal}
+              theme={theme}
+              trackUrl={vibe.trackUrl}
+              vibe={vibe}
+              title={journalTitle || undefined}
+              setTitle={setJournalTitle}
+              initialVibeId={vibeId || undefined}
+              onVibeIdChange={(id) => {
+                setVibeId(id);
+                setHasJournalBeenSaved(true);
+              }}
+              skipAutoSave={hasJournalBeenSaved}
+            />
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

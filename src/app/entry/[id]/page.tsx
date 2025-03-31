@@ -131,7 +131,7 @@ export default function SharedEntryPage() {
           <p className="text-lg mb-6">This vibe link is invalid or expired.</p>
           <motion.button
             onClick={() => router.push("/")}
-            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-medium hover:opacity-90 transition-opacity"
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-medium hover:opacity-90 transition-opacity cursor-pointer"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

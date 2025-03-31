@@ -57,7 +57,6 @@ const songRecommendations = {
   "🧣": ["All Too Well by Taylor Swift", "Red Scarf by Ginger Root", "Wrapped Around Your Finger by The Police"],
   "🍵": ["Cup of Tea by Kacey Musgraves", "Coffee by Beabadoobee", "Tea for Two by Doris Day"],
   "🕯️": ["Candle in the Wind by Elton John", "Light My Fire by The Doors", "Burn by Ellie Goulding"],
-  "🪴": ["Garden Song by Phoebe Bridgers", "In Bloom by Nirvana", "Flower by Moby"],
   "🧦": ["Red Socks Pugie by Foals", "Socks by Why Don't We", "Blue Socks by Ace Wilder"],
   
   // Default options for pets not in the list
@@ -130,15 +129,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the journal entry
-    const entryPrompt = `Write a short, cozy, poetic journal entry inspired by this vibe:
+    const entryPrompt = `Create a creative journal entry with a title based on this vibe:
 
 - Pet: ${pet}
 - Font: ${font}
 - Background: ${bg}
 - Quote: "${quote}"
 
-Keep it dreamlike, surreal, and under 60 words.
-Start the response directly with "**Journal Entry:**" followed by the entry text.`;
+First, generate a short, evocative title that captures the essence of the journal entry.
+Then, write a dreamlike, surreal, and poetic journal entry under 60 words.
+
+Format your response exactly like this:
+**Title:** [Your generated title]
+**Journal Entry:** [Your journal entry text]`;
 
     const entryResponse = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -165,13 +168,28 @@ Start the response directly with "**Journal Entry:**" followed by the entry text
 
     const entryData = await entryResponse.json();
     const content = entryData?.choices?.[0]?.message?.content || 
-      "The dream faded before it was written.";
+      "**Title:** Untitled Dream\n**Journal Entry:** The dream faded before it was written.";
 
-    // Clean the journal entry
-    const entry = cleanAIResponse(content);
+    // Parse title and entry from the response
+    let title = "Untitled Dream";
+    let entry = "";
+    
+    const titleMatch = content.match(/\*\*Title:\*\*\s*(.*?)(?=\n\*\*Journal Entry:|$)/);
+    if (titleMatch && titleMatch[1]) {
+      title = titleMatch[1].trim();
+    }
+    
+    const entryMatch = content.match(/\*\*Journal Entry:\*\*\s*([\s\S]*?)$/);
+    if (entryMatch && entryMatch[1]) {
+      entry = entryMatch[1].trim();
+    } else {
+      // Fallback to cleaning the whole response if we can't extract the entry
+      entry = cleanAIResponse(content);
+    }
 
-    // Return both the entry and song query
+    // Return the title, entry and song query
     return NextResponse.json({
+      title,
       entry,
       songQuery,
     });
