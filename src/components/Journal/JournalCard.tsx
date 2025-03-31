@@ -63,7 +63,7 @@ export default function JournalCard({
   };
 
   return (
-    <div className="relative bg-white/10 text-white max-w-xl w-full mx-4 p-6 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-2xl">
+    <div className="relative bg-black/40 text-white max-w-xl w-full mx-4 p-6 rounded-2xl shadow-2xl border border-white/20 backdrop-blur-3xl">
       {/* Close Button */}
       {onClose && (
         <button

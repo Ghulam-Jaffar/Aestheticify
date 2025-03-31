@@ -50,7 +50,7 @@ export const VIBES: Record<string, VibeConfig> = {
   },
   voidwave: {
     name: "Voidwave",
-    icon: "🌊",
+    icon: "🌒",
     audio: "/assets/voidwave.mp3",
     component: Voidwave,
   },

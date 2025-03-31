@@ -54,6 +54,7 @@ export function cleanAIResponse(rawText: string): string {
 
   // Extract journal entry from the response
   const entryStartMarker = "**Journal Entry:**";
+  const songStartMarker = "**Song Recommendation:**";
 
   const startIndex = rawText.indexOf(entryStartMarker);
   if (startIndex === -1) {
@@ -62,8 +63,14 @@ export function cleanAIResponse(rawText: string): string {
     return rawText.trim();
   }
 
-  // Extract text after the marker
+  // Extract text after the entry marker
   let entryText = rawText.substring(startIndex + entryStartMarker.length);
+  
+  // If there's a song recommendation, only keep the entry part
+  const songIndex = entryText.indexOf(songStartMarker);
+  if (songIndex !== -1) {
+    entryText = entryText.substring(0, songIndex);
+  }
 
   // Clean up leading/trailing whitespace and markdown formatting
   // (Handles potential italics or bold around the entry itself)

@@ -20,18 +20,32 @@ export async function saveVibe(data: SaveVibeData): Promise<string> {
   const auth = getAuth();
   const user = auth.currentUser;
 
+  // Create the document data with timestamps and user info if available
   const docData = {
     ...data,
     createdAt: serverTimestamp(),
+    // Add user information if logged in
+    creator: user ? {
+      uid: user.uid,
+      displayName: user.displayName || null,
+      email: user.email || null,
+      photoURL: user.photoURL || null,
+    } : null,
   };
 
-  // Save a public copy first (for sharing)
-  const publicDocRef = await addDoc(collection(db, "vibes"), docData);
-
-  // Save under user's collection if logged in
+  // Save to the vibes collection (single source of truth)
+  const vibeDocRef = await addDoc(collection(db, "vibes"), docData);
+  
+  // If user is logged in, just store a reference in their collection
   if (user) {
-    await setDoc(doc(db, "users", user.uid, "vibes", publicDocRef.id), docData);
+    await setDoc(
+      doc(db, "users", user.uid, "vibes", vibeDocRef.id), 
+      {
+        vibeId: vibeDocRef.id,
+        createdAt: serverTimestamp(),
+      }
+    );
   }
 
-  return publicDocRef.id;
+  return vibeDocRef.id;
 }

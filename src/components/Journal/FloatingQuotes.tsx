@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const localQuotes = [
   "Breathe in the static, exhale the glow.",
   "You are a signal in the noise.",
   "Today is wrapped in velvet data.",
-  "This is not a dream — it’s a vibe.",
+  "This is not a dream — it's a vibe.",
   "Let it flicker. Let it float.",
   "You are synced and seen.",
   "Your calm is loud in here.",
@@ -18,13 +19,9 @@ interface FloatingQuote {
   quote: string;
   duration: number;
   position: { top: string; left: string };
-}
-
-interface QuoteCardProps {
-  quote: string;
-  duration: number;
-  onDone: () => void;
-  theme: "light" | "dark";
+  isPaused: boolean;
+  isPopped: boolean;
+  isLeaving: boolean;
 }
 
 interface FloatingQuotesProps {
@@ -49,61 +46,58 @@ async function fetchQuote(): Promise<string> {
 
 function getRandomPosition() {
   return {
-    top: `${Math.random() * 80 + 5}%`,
+    top: `${Math.random() * 70 + 10}%`,
     left: `${Math.random() * 70 + 10}%`,
   };
-}
-
-function QuoteCard({ quote, duration, onDone, theme }: QuoteCardProps) {
-  useEffect(() => {
-    const timer = setTimeout(onDone, duration * 1000);
-    return () => clearTimeout(timer);
-  }, [duration, onDone]);
-
-  return (
-    <div
-      className={`fixed bottom-12 left-1/2 transform -translate-x-1/2 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl max-w-lg text-center text-lg leading-relaxed animate-fade-card z-50 pointer-events-none
-        ${
-          theme === "light"
-            ? "bg-black/10 text-black"
-            : "bg-white/10 text-white"
-        }`}
-      style={{ "--duration": `${duration}s` } as React.CSSProperties}
-    >
-      <div className="text-3xl mb-2 opacity-40">“</div>
-      {quote}
-    </div>
-  );
 }
 
 export default function FloatingQuotes({
   theme = "dark",
 }: FloatingQuotesProps) {
   const [bubbleQueue, setBubbleQueue] = useState<FloatingQuote[]>([]);
-  const [cardQueue, setCardQueue] = useState<
-    { quote: string; duration: number }[]
-  >([]);
-  const [activeCard, setActiveCard] = useState<{
-    quote: string;
-    duration: number;
-  } | null>(null);
 
   // Floating bubbles
   useEffect(() => {
     const spawn = async () => {
       const quote = await fetchQuote();
+      
+      // Adjust duration based on quote length
       const duration = Math.min(14, 5 + quote.length / 15);
-
-      if (quote.length < 180) {
-        const id = Date.now();
-        const position = getRandomPosition();
-        setBubbleQueue((prev) => [...prev, { id, quote, duration, position }]);
-        setTimeout(() => {
-          setBubbleQueue((prev) => prev.filter((b) => b.id !== id));
-        }, duration * 1000);
-      } else {
-        setCardQueue((prev) => [...prev, { quote, duration }]);
+      
+      // For longer quotes, split into multiple bubbles
+      if (quote.length > 180) {
+        const chunks = splitQuoteIntoChunks(quote, 150);
+        chunks.forEach((chunk, index) => {
+          setTimeout(() => {
+            addBubble(chunk, duration);
+          }, index * 1000); // Stagger the appearance
+        });
+        return;
       }
+      
+      addBubble(quote, duration);
+    };
+    
+    const addBubble = (quote: string, duration: number) => {
+      const id = Date.now() + Math.random();
+      const position = getRandomPosition();
+      setBubbleQueue((prev) => [...prev, { 
+        id, 
+        quote, 
+        duration, 
+        position,
+        isPaused: false,
+        isPopped: false,
+        isLeaving: false
+      }]);
+      
+      // Set timeout to remove the bubble after duration
+      setTimeout(() => {
+        setBubbleQueue((prev) => {
+          // Only remove if not paused
+          return prev.filter((b) => b.id !== id || b.isPaused);
+        });
+      }, duration * 1000);
     };
 
     const interval = setInterval(spawn, 6000);
@@ -111,87 +105,132 @@ export default function FloatingQuotes({
     return () => clearInterval(interval);
   }, []);
 
-  // Card rotation
-  useEffect(() => {
-    if (!activeCard && cardQueue.length > 0) {
-      const next = cardQueue[0];
-      setActiveCard(next);
-      setCardQueue((prev) => prev.slice(1));
-    }
+  // Handle hover pause
+  const handleMouseEnter = (id: number) => {
+    setBubbleQueue(prev => 
+      prev.map(bubble => 
+        bubble.id === id ? { ...bubble, isPaused: true } : bubble
+      )
+    );
+  };
 
-    // Prefetch
-    if (cardQueue.length < 2) {
-      fetchQuote().then((quote) => {
-        if (quote.length >= 180) {
-          const duration = Math.min(14, 5 + quote.length / 15);
-          setCardQueue((prev) => [...prev, { quote, duration }]);
-        }
-      });
-    }
-  }, [cardQueue, activeCard]);
+  // Handle mouse leave - resume animation
+  const handleMouseLeave = (id: number) => {
+    // Find the bubble
+    const bubble = bubbleQueue.find(b => b.id === id);
+    if (!bubble) return;
+    
+    // Mark it as not paused
+    setBubbleQueue(prev => 
+      prev.map(b => b.id === id ? { ...b, isPaused: false, isLeaving: true } : b)
+    );
+    
+    // Remove it after a short delay - this prevents it from reappearing
+    setTimeout(() => {
+      setBubbleQueue(prev => prev.filter(b => b.id !== id));
+    }, 500);
+  };
+
+  // Handle click to pop
+  const handleClick = (id: number, e: React.MouseEvent) => {
+    // Stop propagation to prevent clicks from reaching elements underneath
+    e.stopPropagation();
+    
+    setBubbleQueue(prev => 
+      prev.map(bubble => 
+        bubble.id === id ? { ...bubble, isPopped: true } : bubble
+      )
+    );
+    
+    // Remove the popped bubble after animation
+    setTimeout(() => {
+      setBubbleQueue(prev => prev.filter(b => b.id !== id));
+    }, 500); // Pop animation duration
+  };
 
   return (
-    <>
-      {bubbleQueue.map(({ id, quote, position, duration }) => (
-        <div
-          key={id}
-          className={`absolute text-sm px-4 py-3 rounded-xl backdrop-blur-sm z-30 leading-relaxed animate-fade-float
-            ${
-              theme === "light"
-                ? "bg-black/10 text-black"
-                : "bg-white/10 text-white"
-            }`}
-          style={
-            {
+    <div className="absolute inset-0 pointer-events-none">
+      <AnimatePresence>
+        {bubbleQueue.map(({ id, quote, position, duration, isPaused, isPopped, isLeaving }) => (
+          <motion.div
+            key={id}
+            className={`absolute text-sm px-4 py-3 rounded-xl backdrop-blur-sm z-30 leading-relaxed cursor-pointer pointer-events-auto
+              ${
+                theme === "light"
+                  ? "bg-black/10 text-black"
+                  : "bg-white/10 text-white"
+              }`}
+            style={{
               ...position,
               maxWidth: "250px",
-              "--duration": `${duration}s`,
-            } as React.CSSProperties
-          }
-        >
-          {quote}
-        </div>
-      ))}
-
-      {activeCard && (
-        <QuoteCard
-          quote={activeCard.quote}
-          duration={activeCard.duration}
-          onDone={() => setActiveCard(null)}
-          theme={theme}
-        />
-      )}
-
-      <style>
-        {`
-          @keyframes fadeFloat {
-            0% { opacity: 0; transform: translateY(10px) scale(0.95); }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { opacity: 0; transform: translateY(-10px) scale(1); }
-          }
-
-          @keyframes fadeCard {
-            0% { opacity: 0; transform: translateY(20px); }
-            10% { opacity: 1; transform: translateY(0); }
-            90% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
-          }
-
-          .animate-fade-float {
-            animation: fadeFloat var(--duration, 8s) ease-in-out forwards;
-          }
-
-          .animate-fade-card {
-            animation: fadeCard var(--duration, 10s) ease-in-out forwards;
-          }
-
-          .animate-fade-float:hover,
-          .animate-fade-card:hover {
-            animation-play-state: paused;
-          }
-        `}
-      </style>
-    </>
+            }}
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={
+              isPopped 
+                ? { 
+                    opacity: 0, 
+                    scale: 1.5, 
+                    y: -30,
+                    transition: { duration: 0.5, ease: "easeOut" }
+                  }
+                : isPaused
+                ? { 
+                    opacity: 1, 
+                    scale: 1.05, 
+                    y: 0,
+                    boxShadow: "0 0 15px rgba(255, 255, 255, 0.3)",
+                    transition: { duration: 0.2 }
+                  }
+                : isLeaving
+                ? { 
+                    opacity: 0, 
+                    scale: 0.8, 
+                    y: -10,
+                    transition: { duration: 0.5 }
+                  }
+                : { 
+                    opacity: [0, 1, 1, 0], 
+                    scale: [0.9, 1, 1, 0.95], 
+                    y: [10, 0, 0, -10],
+                    transition: { 
+                      duration: duration,
+                      times: [0, 0.1, 0.9, 1],
+                      ease: "easeInOut"
+                    }
+                  }
+            }
+            exit={{ opacity: 0, scale: 0.8, y: -10, transition: { duration: 0.3 } }}
+            onMouseEnter={() => handleMouseEnter(id)}
+            onMouseLeave={() => handleMouseLeave(id)}
+            onClick={(e) => handleClick(id, e)}
+          >
+            {quote}
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
   );
+}
+
+// Helper function to split long quotes into chunks
+function splitQuoteIntoChunks(quote: string, maxLength: number): string[] {
+  const chunks: string[] = [];
+  let currentIndex = 0;
+  
+  while (currentIndex < quote.length) {
+    // Find a good breaking point
+    let endIndex = Math.min(currentIndex + maxLength, quote.length);
+    if (endIndex < quote.length) {
+      // Try to break at a space
+      const spaceIndex = quote.lastIndexOf(' ', endIndex);
+      if (spaceIndex > currentIndex) {
+        endIndex = spaceIndex;
+      }
+    }
+    
+    chunks.push(quote.substring(currentIndex, endIndex));
+    currentIndex = endIndex + 1;
+  }
+  
+  return chunks;
 }
