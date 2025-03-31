@@ -6,6 +6,7 @@
 // </Modal>
 
 import React, { ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ModalProps {
   children: ReactNode;
@@ -22,13 +23,59 @@ export default function Modal({
   custom = false,
   className = "",
 }: ModalProps) {
+  // Animation variants
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+    exit: { opacity: 0 }
+  };
+
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 20 },
+    visible: { 
+      opacity: 1, 
+      scale: 1, 
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      scale: 0.9, 
+      y: 20,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md z-50 animate-fade-in">
+    <motion.div 
+      className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-md z-50"
+      variants={backdropVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+    >
       {custom ? (
-        children
+        <motion.div
+          variants={modalVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
+          {children}
+        </motion.div>
       ) : (
-        <div
+        <motion.div
           className={`relative bg-white/10 text-white w-full mx-4 p-6 rounded-2xl shadow-2xl backdrop-blur-xl border border-white/20 ${className}`}
+          variants={modalVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
         >
           {onClose && (
             <button
@@ -39,8 +86,8 @@ export default function Modal({
             </button>
           )}
           {children}
-        </div>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

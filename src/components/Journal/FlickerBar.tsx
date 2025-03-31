@@ -1,62 +1,89 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
-interface BarStyle {
-  top: string;
-  left: string;
-  width: string;
-  height: string;
-  backgroundColor: string;
-  transform: string;
-  animationDuration: string;
+interface FlickerBarProps {
+  className?: string;
 }
 
-export default function FlickerBar() {
-  const [style, setStyle] = useState<BarStyle>(randomBarStyle());
-  const ref = useRef<HTMLDivElement>(null);
+export default function FlickerBar({ className = "" }: FlickerBarProps) {
+  const [bars, setBars] = useState<Array<{
+    left: number;
+    height: number;
+    width: number;
+    delay: number;
+    duration: number;
+    color: string;
+  }>>([]);
 
-  function randomBarStyle(): BarStyle {
-    const colors = ["#00ffff", "#ff00ff", "#ffffff"];
-    const duration = (0.8 + Math.random() * 0.8).toFixed(2);
+  useEffect(() => {
+    // Generate multiple flicker bars
+    const newBars = Array.from({ length: 25 }, () => generateBarProps());
+    setBars(newBars);
 
+    // Refresh bars periodically
+    const interval = setInterval(() => {
+      setBars(Array.from({ length: 25 }, () => generateBarProps()));
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  function generateBarProps() {
+    const colors = [
+      "from-purple-500 to-pink-300",
+      "from-cyan-500 to-blue-300",
+      "from-pink-500 to-purple-300",
+    ];
+    
     return {
-      top: `${Math.random() * 100}%`,
-      left: `${Math.random() * 100}%`,
-      width: `${100 + Math.random() * 100}px`,
-      height: `${Math.random() > 0.7 ? 4 : 2}px`,
-      backgroundColor: colors[Math.floor(Math.random() * colors.length)],
-      transform: `rotate(${Math.random() * 90 - 45}deg)`,
-      animationDuration: `${duration}s`,
+      left: Math.random() * 100,
+      height: 30 + Math.random() * 150,
+      width: 3 + Math.random() * 5,
+      delay: Math.random() * 2,
+      duration: 1 + Math.random() * 2,
+      color: colors[Math.floor(Math.random() * colors.length)],
     };
   }
 
-  useEffect(() => {
-    const cycle = () => {
-      setStyle(randomBarStyle());
-    };
-
-    const durationMs = parseFloat(style.animationDuration) * 1000;
-    const timer = setInterval(cycle, durationMs);
-
-    return () => clearInterval(timer);
-  }, [style.animationDuration]);
-
   return (
-    <div
-      ref={ref}
-      className="absolute blur-[1px]"
-      style={{
-        ...style,
-        animationName: "synthBarFlicker",
-        animationTimingFunction: "ease-in-out",
-        animationIterationCount: "infinite",
-        animationDuration: style.animationDuration,
-        animationDelay: `${Math.random() * 3}s`,
-        boxShadow: `0 0 6px ${style.backgroundColor}, 0 0 20px ${style.backgroundColor}`,
-        transformOrigin: "bottom",
-        opacity: 0.8,
-      }}
-    />
+    <div className={`absolute inset-0 overflow-hidden pointer-events-none ${className}`}>
+      {bars.map((bar, i) => (
+        <motion.div
+          key={i}
+          className={`absolute bottom-0 bg-gradient-to-t ${bar.color}`}
+          initial={{ 
+            height: bar.height * 0.4, 
+            opacity: 0.5,
+            scaleY: 0.4
+          }}
+          animate={{
+            height: [
+              bar.height * 0.4,
+              bar.height * 1.2,
+              bar.height * 0.6,
+              bar.height * 1.4,
+              bar.height * 0.4
+            ],
+            opacity: [0.5, 0.9, 0.7, 1, 0],
+            scaleY: [0.4, 1.2, 0.6, 1.4, 0.4]
+          }}
+          transition={{
+            duration: bar.duration,
+            delay: bar.delay,
+            repeat: Infinity,
+            ease: "easeInOut",
+            times: [0, 0.25, 0.5, 0.75, 1]
+          }}
+          style={{
+            left: `${bar.left}%`,
+            width: `${bar.width}px`,
+            filter: "blur(1px)",
+            boxShadow: "0 0 8px rgba(255, 0, 255, 0.7)",
+          }}
+        />
+      ))}
+    </div>
   );
 }
