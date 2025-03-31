@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import html2canvas from "html2canvas-pro"; // Use html2canvas-pro instead
 import { motion } from "framer-motion";
+import { logEvent, AnalyticsEvents } from "@/utils/analytics";
 
 interface SpotifyTrackInfo {
   name: string;
@@ -229,22 +230,29 @@ export default function JournalCard({
 
     try {
       setIsSaving(true);
-
+      
       // Check if user is logged in
       const auth = getAuth();
       if (!auth.currentUser) {
-        // Show login prompt
-        toast.loading("Please sign in to save your journal", {
-          duration: 3000,
+        // Show sign-in prompt
+        toast.error("Please sign in to save your journal");
+        
+        // Track attempted save without login
+        logEvent(AnalyticsEvents.JOURNAL_SAVED, { 
+          status: 'failed', 
+          reason: 'not_logged_in' 
         });
+        
+        setIsSaving(false);
+        return;
+      }
 
-        // Try to sign in with Google
-        const provider = new GoogleAuthProvider();
-        try {
-          await signInWithPopup(auth, provider);
-        } catch (error) {
-          console.error("Authentication error:", error);
-          toast.error("Failed to sign in");
+      // Check if the journal is already linked to the user
+      if (vibeId) {
+        const isSaved = await isVibeSavedByUser(vibeId);
+        if (isSaved) {
+          toast.success("Journal already saved to your account");
+          setIsLinkedToUser(true);
           setIsSaving(false);
           return;
         }
@@ -282,9 +290,22 @@ export default function JournalCard({
       const url = `${window.location.origin}/entry/${savedVibeId}`;
       await navigator.clipboard.writeText(url);
       toast.success("🔗 Link copied to clipboard!");
+      
+      // Track successful save
+      logEvent(AnalyticsEvents.JOURNAL_SAVED, { 
+        status: 'success',
+        has_track: !!trackUrl
+      });
+      
     } catch (error) {
       console.error("Error saving journal:", error);
       toast.error("An error occurred while saving");
+      
+      // Track failed save
+      logEvent(AnalyticsEvents.JOURNAL_SAVED, { 
+        status: 'failed',
+        reason: 'error'
+      });
     } finally {
       setIsSaving(false);
     }
@@ -294,6 +315,13 @@ export default function JournalCard({
   const handleCopy = async () => {
     if (!vibeId) {
       toast.error("Journal hasn't been saved yet");
+      
+      // Track failed copy attempt
+      logEvent(AnalyticsEvents.JOURNAL_SHARED, {
+        status: 'failed',
+        reason: 'not_saved'
+      });
+      
       return;
     }
 
@@ -303,9 +331,22 @@ export default function JournalCard({
       const url = `${window.location.origin}/entry/${vibeId}`;
       await navigator.clipboard.writeText(url);
       toast.success("🔗 Link copied to clipboard!");
+      
+      // Track successful copy
+      logEvent(AnalyticsEvents.JOURNAL_SHARED, {
+        status: 'success'
+      });
+      
     } catch (error) {
       console.error("Error copying link:", error);
       toast.error("Failed to copy link");
+      
+      // Track failed copy
+      logEvent(AnalyticsEvents.JOURNAL_SHARED, {
+        status: 'failed',
+        reason: 'clipboard_error'
+      });
+      
     } finally {
       // Reset the copied state after 3 seconds
       setTimeout(() => {
@@ -325,7 +366,7 @@ export default function JournalCard({
       // If there's a Spotify iframe, temporarily replace it with a visual representation
       let spotifyIframe: HTMLIFrameElement | null = null;
       let spotifyContainer: HTMLDivElement | null = null;
-
+      
       // Find and hide the action buttons
       const actionButtons = cardRef.current.querySelector('.action-buttons');
       if (actionButtons) {
@@ -366,7 +407,7 @@ export default function JournalCard({
         spotifyIframe.style.display = "block";
         spotifyContainer.remove();
       }
-
+      
       // Show the action buttons again
       if (actionButtons) {
         actionButtons.classList.remove('hidden');
@@ -386,9 +427,22 @@ export default function JournalCard({
       // Show success toast
       toast.dismiss(loadingToast);
       toast.success("Journal image saved!");
+      
+      // Track successful download
+      logEvent(AnalyticsEvents.JOURNAL_DOWNLOADED, {
+        has_track: !!trackUrl,
+        has_title: !!title
+      });
+      
     } catch (error) {
       console.error("Error downloading journal:", error);
       toast.error("Failed to capture journal");
+      
+      // Track failed download
+      logEvent(AnalyticsEvents.JOURNAL_DOWNLOADED, {
+        status: 'failed',
+        reason: 'capture_error'
+      });
     }
   };
 

@@ -8,6 +8,7 @@ import { Howl } from "howler";
 import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas-pro"; // Use html2canvas-pro instead
+import { logEvent, AnalyticsEvents } from "@/utils/analytics";
 
 interface SpotifyTrackInfo {
   name: string;
@@ -166,6 +167,46 @@ export default function ShareVibeModal({
     };
   }, [vibe.audio]);
 
+  // Handle copying the journal link
+  const handleCopyLink = async () => {
+    if (!id) return;
+
+    try {
+      const url = `${window.location.origin}/entry/${id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("🔗 Link copied to clipboard!");
+      
+      // Track successful copy
+      logEvent(AnalyticsEvents.JOURNAL_SHARED, {
+        status: 'success',
+        source: 'modal'
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast.error("Failed to copy link");
+      
+      // Track failed copy
+      logEvent(AnalyticsEvents.JOURNAL_SHARED, {
+        status: 'failed',
+        reason: 'clipboard_error',
+        source: 'modal'
+      });
+    }
+  };
+
+  // Toggle QR code visibility
+  const toggleQRCode = () => {
+    const newState = !showQR;
+    setShowQR(newState);
+    
+    // Track QR code viewed event
+    if (newState) {
+      logEvent(AnalyticsEvents.QR_CODE_VIEWED, {
+        journal_id: id
+      });
+    }
+  };
+
   // Capture and download the journal entry as an image
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -238,41 +279,33 @@ export default function ShareVibeModal({
       const date = new Date().toISOString().split("T")[0];
       const filename = `journal-${date}-${Date.now()}.png`;
 
-      // Convert to image and download
+      // Convert to data URL and trigger download
+      const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
+      link.href = dataUrl;
       link.download = filename;
-      link.href = canvas.toDataURL("image/png");
-
-      // Dismiss loading toast and show success
-      toast.dismiss(loadingToast);
-      toast.success("📸 Journal image downloaded!");
-
       link.click();
+
+      // Dismiss loading toast and show success message
+      toast.dismiss(loadingToast);
+      toast.success("Journal image saved!");
+      
+      // Track successful download
+      logEvent(AnalyticsEvents.JOURNAL_DOWNLOADED, {
+        source: 'modal',
+        has_track: !!trackUrl,
+        has_qr: showQR
+      });
     } catch (error) {
       console.error("Error downloading journal:", error);
-      toast.error("Failed to capture journal image");
-      setImageError(true);
-    }
-  };
-
-  // Copy shareable link to clipboard
-  const handleCopyLink = async () => {
-    if (!id) return;
-    const url = `${window.location.origin}/entry/${id}`;
-
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("🔗 Shareable link copied to clipboard!");
-    } catch (err) {
-      // Handle clipboard error - likely due to document not being focused
-      console.error("Clipboard error:", err);
-      toast.success(
-        <div>
-          <p>🔗 Shareable link:</p>
-          <p className="mt-1 text-xs break-all">{url}</p>
-        </div>,
-        { duration: 5000 }
-      );
+      toast.error("Failed to capture journal");
+      
+      // Track failed download
+      logEvent(AnalyticsEvents.JOURNAL_DOWNLOADED, {
+        status: 'failed',
+        reason: 'capture_error',
+        source: 'modal'
+      });
     }
   };
 
@@ -307,11 +340,6 @@ export default function ShareVibeModal({
     title ||
     vibe.quote ||
     (trackInfo ? `${trackInfo.name} - ${trackInfo.artist}` : "Journal Entry");
-
-  // Toggle QR code visibility
-  const toggleQRCode = useCallback(() => {
-    setShowQR((prev) => !prev);
-  }, []);
 
   return (
     <motion.div

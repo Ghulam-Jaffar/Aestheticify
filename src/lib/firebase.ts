@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore"
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -22,3 +23,17 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Analytics - but only if it's supported in the current environment
+// This prevents errors during SSR or when cookies are disabled
+export const initializeAnalytics = async () => {
+  try {
+    if (await isSupported()) {
+      return getAnalytics(app);
+    }
+    return null;
+  } catch (error) {
+    console.error("Firebase Analytics initialization error:", error);
+    return null;
+  }
+};

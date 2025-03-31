@@ -17,6 +17,7 @@ import Modal from "@/components/UI/Modal";
 import JournalCard from "@/components/Journal/JournalCard";
 import { Vibe } from "@/types/VibeComponent";
 import { motion, AnimatePresence } from "framer-motion";
+import { logEvent, AnalyticsEvents } from "@/utils/analytics";
 
 // Background animation components
 const FloatingParticles = React.memo(() => {
@@ -237,11 +238,20 @@ export default function GeneratedVibe({
           setVibe((prev) => ({ ...prev, trackUrl }));
         }
         setLoading(false);
+        
+        // Track vibe generation
+        logEvent(AnalyticsEvents.VIBE_GENERATED, {
+          prompt_type: vibeTheme === "random" ? 'default' : 'custom'
+        });
       } catch (err) {
         // Only update state and log if still mounted
         if (isMounted) {
           console.error("Error in vibe generation:", err);
           setLoading(false);
+          logEvent(AnalyticsEvents.VIBE_GENERATED, {
+            status: 'failed',
+            reason: 'generation_error'
+          });
         }
       }
     };
@@ -287,6 +297,9 @@ export default function GeneratedVibe({
     setVibeTheme(theme);
     setRemixCount(prev => prev + 1);
     setShowThemeOptions(false);
+    logEvent(AnalyticsEvents.VIBE_REMIXED, {
+      prompt_type: theme === "random" ? 'default' : 'custom'
+    });
   }, []);
 
   const toggleThemeOptions = useCallback(() => {
@@ -296,6 +309,13 @@ export default function GeneratedVibe({
   const toggleJournal = useCallback(() => {
     setShowEntry(prev => !prev);
   }, [setShowEntry]);
+
+  const handleSpotifyTrackSelect = (trackUrl: string) => {
+    setVibe((prev) => ({ ...prev, trackUrl }));
+    logEvent(AnalyticsEvents.SPOTIFY_TRACK_ADDED, {
+      has_journal: !!journal
+    });
+  };
 
   return (
     <div
