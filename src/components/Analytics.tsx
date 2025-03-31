@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { initializeAnalytics } from '@/lib/firebase';
 import { logEvent } from 'firebase/analytics';
 
-export default function Analytics() {
+// Separate component that uses useSearchParams
+function AnalyticsTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -27,6 +28,14 @@ export default function Analytics() {
     handleRouteChange();
   }, [pathname, searchParams]);
 
-  // This component doesn't render anything
   return null;
+}
+
+// Main component with Suspense boundary
+export default function Analytics() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsTracker />
+    </Suspense>
+  );
 }
