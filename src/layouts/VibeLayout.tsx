@@ -223,7 +223,7 @@ export default function VibeLayout({
 
               <motion.div 
                 variants={controlItemVariants}
-                className="absolute bottom-6 right-6 pointer-events-auto"
+                className="absolute inset-0 pointer-events-none"
               >
                 <FloatingQuotes theme={theme} />
               </motion.div>

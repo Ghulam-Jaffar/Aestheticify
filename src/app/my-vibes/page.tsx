@@ -226,7 +226,7 @@ export default function MyVibesPage() {
                 key={v.id}
                 variants={itemVariants}
                 whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className={`rounded-xl p-6 border border-white/20 bg-white/10 backdrop-blur shadow-lg ${v.vibe.bg} ${v.vibe.font} cursor-pointer`}
+                className={`rounded-xl p-6 bg-white/10 backdrop-blur shadow-lg ${v.vibe.bg} ${v.vibe.font} cursor-pointer`}
                 onClick={() => router.push(`/entry/${v.id}`)}
               >
                 <div className="flex justify-between items-start mb-3">
@@ -240,7 +240,7 @@ export default function MyVibesPage() {
                   </div>
                 </div>
                 <p className="italic text-sm mb-4 line-clamp-2">
-                  "{v.vibe.quote}"
+                  "{v.title}"
                 </p>
                 <div className="flex justify-between items-center">
                   <p className="text-xs opacity-70">

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanAIResponse } from "@/utils/generateEntry";
+import { cleanAIResponse } from "@/utils/generateJournal";
 
 // Song recommendations based on different vibes
 const songRecommendations = {
@@ -161,7 +161,7 @@ Format your response exactly like this:
 
     if (!entryResponse.ok) {
       return NextResponse.json(
-        { error: "Failed to generate entry" },
+        { error: "Failed to generate journal" },
         { status: entryResponse.status }
       );
     }
@@ -170,7 +170,7 @@ Format your response exactly like this:
     const content = entryData?.choices?.[0]?.message?.content || 
       "**Title:** Untitled Dream\n**Journal Entry:** The dream faded before it was written.";
 
-    // Parse title and entry from the response
+    // Parse title and journal entry from the response
     let title = "Untitled Dream";
     let entry = "";
     
@@ -194,9 +194,9 @@ Format your response exactly like this:
       songQuery,
     });
   } catch (error) {
-    console.error("Error generating entry:", error);
+    console.error("Error generating journal:", error);
     return NextResponse.json(
-      { error: "Failed to generate entry" },
+      { error: "Failed to generate journal" },
       { status: 500 }
     );
   }

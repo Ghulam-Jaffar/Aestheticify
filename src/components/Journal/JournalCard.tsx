@@ -9,12 +9,8 @@ import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import html2canvas from "html2canvas-pro"; // Use html2canvas-pro instead
 import { motion } from "framer-motion";
 import { logEvent, AnalyticsEvents } from "@/utils/analytics";
-
-interface SpotifyTrackInfo {
-  name: string;
-  artist: string;
-  albumArt?: string;
-}
+import SocialShareButtons from "./SocialShareButtons";
+import { fetchTrackMetadata, SpotifyTrackInfo } from "@/utils/fetchTrackMetadata";
 
 interface JournalCardProps {
   journal: string;
@@ -134,33 +130,6 @@ export default function JournalCard({
 
     autoSaveJournal();
   }, [trackUrl, vibeId, journal, vibe, title, onVibeIdChange, skipAutoSave]);
-
-  // Reusable function to fetch track metadata
-  const fetchTrackMetadata = useCallback(
-    async (trackUrl: string): Promise<SpotifyTrackInfo | undefined> => {
-      try {
-        // Extract track ID
-        const trackId = trackUrl.split("/track/")[1]?.split("?")[0];
-        if (!trackId) return undefined;
-
-        // Fetch track details from our API
-        const response = await fetch(`/api/spotify/track?id=${trackId}`);
-        const data = await response.json();
-
-        if (data.track) {
-          return {
-            name: data.track.name,
-            artist: data.track.artists?.[0]?.name || "Unknown Artist",
-            albumArt: data.track.album?.images?.[0]?.url,
-          };
-        }
-      } catch (error) {
-        console.error("Error fetching track info:", error);
-      }
-      return undefined;
-    },
-    []
-  );
 
   // Reusable function to create a Spotify visual representation
   const createSpotifyVisual = useCallback(
@@ -372,6 +341,12 @@ export default function JournalCard({
       if (actionButtons) {
         actionButtons.classList.add('hidden');
       }
+      
+      // Hide social buttons if visible
+      const socialButtons = cardRef.current.querySelector('.social-buttons');
+      if (socialButtons) {
+        socialButtons.classList.add('hidden');
+      }
 
       if (trackUrl) {
         // Find the Spotify iframe
@@ -411,6 +386,11 @@ export default function JournalCard({
       // Show the action buttons again
       if (actionButtons) {
         actionButtons.classList.remove('hidden');
+      }
+      
+      // Show social buttons again
+      if (socialButtons) {
+        socialButtons.classList.remove('hidden');
       }
 
       // Convert canvas to data URL
@@ -514,6 +494,19 @@ export default function JournalCard({
           {isSaving ? "Saving..." : isLinkedToUser ? "✅ Saved" : "💾 Save"}
         </Button>
       </div>
+
+      {/* Social share buttons */}
+      {vibeId && (
+        <div className="mt-4 social-buttons">
+          <SocialShareButtons 
+            url={`${window.location.origin}/entry/${vibeId}`}
+            title={title || "Check out my journal entry on Aestheticify"}
+            text={journal.substring(0, 100) + (journal.length > 100 ? "..." : "")}
+            theme={theme}
+            className="justify-center"
+          />
+        </div>
+      )}
     </motion.div>
   );
 }

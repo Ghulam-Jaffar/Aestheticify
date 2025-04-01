@@ -1,4 +1,4 @@
-// src/app/api/entry/[id]/route.ts
+// src/app/api/vibe/[id]/route.ts
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { NextResponse } from "next/server";
@@ -19,7 +19,7 @@ export async function GET(
 
     return NextResponse.json(docSnap.data());
   } catch (error) {
-    console.error("Error fetching vibe entry:", error);
+    console.error("Error fetching vibe:", error);
     return NextResponse.json(
       { error: "Something went wrong" },
       { status: 500 }

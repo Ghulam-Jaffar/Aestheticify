@@ -42,7 +42,7 @@ export const pets = [
   // Glitch pets
   '🤖', '💻', '🖥️', '📱', '🎛️', '🔌',
   // Cozy pets
-  '🧶', '🧣', '🍵', '🕯️', '🪴', '🧦',
+  '🧶', '🧣', '🍵', '🕯️', '🧦',
 ]
 
 export const fonts = [
@@ -204,7 +204,7 @@ export const themeOptions = {
       'bg-gradient-to-tl from-yellow-200 via-red-300 to-pink-500',
       'bg-gradient-to-r from-amber-500 to-pink-500',
     ],
-    pets: ['🧸', '🧶', '🧣', '🍵', '🕯️', '🪴', '🧦'],
+    pets: ['🧸', '🧶', '🧣', '🍵', '🕯️', '🧦'],
     fonts: ['font-serif', 'font-medium'],
     captions: [
       'Wrapped in comfort, surrounded by peace.',
