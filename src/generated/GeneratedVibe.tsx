@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Howl } from "howler";
 import Button from "@/components/UI/Button";
-import { generateEntry } from "@/utils/generateEntry";
+import { generateJournal } from "@/utils/generateJournal";
 import { fetchSpotifyTrack } from "@/utils/fetchSpotifyTrack";
 import {
   backgrounds,
@@ -210,7 +210,7 @@ export default function GeneratedVibe({
         // Generate the journal entry
         let result;
         try {
-          result = await generateEntry(newVibe, controller.signal);
+          result = await generateJournal(newVibe, controller.signal);
         } catch (e) {
           if (!isMounted) return;
           throw e;

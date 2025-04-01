@@ -8,6 +8,9 @@ import { Vibe } from "@/types/VibeComponent";
 
 export default function SharedEntryPage() {
   const params = useParams();
+  // Safely extract the ID parameter
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  
   const router = useRouter();
   const [loading, setLoading] = useState(true);
 
@@ -27,10 +30,9 @@ export default function SharedEntryPage() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const id = (params as any)?.id;
     if (!id) return;
 
-    fetch(`/api/entry/${id}`)
+    fetch(`/api/vibe/${id}`)
       .then((res) => res.json())
       .then((data) => {
         if (!data || !data.journal) {
@@ -52,7 +54,7 @@ export default function SharedEntryPage() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [params]);
+  }, [id]);
 
   // Animation variants
   const containerVariants = {

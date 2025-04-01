@@ -240,7 +240,7 @@ export default function MyVibesPage() {
                   </div>
                 </div>
                 <p className="italic text-sm mb-4 line-clamp-2">
-                  "{v.vibe.quote}"
+                  "{v.title}"
                 </p>
                 <div className="flex justify-between items-center">
                   <p className="text-xs opacity-70">

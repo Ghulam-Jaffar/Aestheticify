@@ -1,7 +1,7 @@
-// utils/generateEntry.ts
+// utils/generateJournal.ts
 import { Vibe } from "@/types/VibeComponent";
 
-export async function generateEntry(
+export async function generateJournal(
   vibe: Vibe,
   signal?: AbortSignal
 ): Promise<{ entry: string; songQuery: string; title?: string }> {
@@ -15,7 +15,7 @@ export async function generateEntry(
       };
     }
     
-    const response = await fetch("/api/generate-entry", {
+    const response = await fetch("/api/generate-journal", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -26,7 +26,7 @@ export async function generateEntry(
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to generate entry");
+      throw new Error(errorData.error || "Failed to generate journal");
     }
 
     const data = await response.json();
@@ -41,7 +41,7 @@ export async function generateEntry(
       };
     }
     
-    console.error("Error generating entry:", error);
+    console.error("Error generating journal:", error);
     return {
       entry: "The dream faded before it was written.",
       songQuery: "chill lofi",

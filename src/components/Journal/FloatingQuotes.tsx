@@ -2,17 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-const localQuotes = [
-  "Breathe in the static, exhale the glow.",
-  "You are a signal in the noise.",
-  "Today is wrapped in velvet data.",
-  "This is not a dream — it's a vibe.",
-  "Let it flicker. Let it float.",
-  "You are synced and seen.",
-  "Your calm is loud in here.",
-  "Wander soft. Exist bright.",
-];
+import { fetchQuote } from "@/utils/fetchQuote";
 
 interface FloatingQuote {
   id: number;
@@ -26,22 +16,6 @@ interface FloatingQuote {
 
 interface FloatingQuotesProps {
   theme?: "light" | "dark";
-}
-
-async function fetchQuote(): Promise<string> {
-  try {
-    const res = await fetch("https://thequoteshub.com/api/random", {
-      headers: {
-        "X-Api-Key": "your_api_ninjas_api_key", // Replace this with real key
-      },
-    });
-    const data = await res.json();
-    return (
-      data?.text || localQuotes[Math.floor(Math.random() * localQuotes.length)]
-    );
-  } catch {
-    return localQuotes[Math.floor(Math.random() * localQuotes.length)];
-  }
 }
 
 function getRandomPosition() {
@@ -61,19 +35,13 @@ export default function FloatingQuotes({
     const spawn = async () => {
       const quote = await fetchQuote();
       
-      // Adjust duration based on quote length
-      const duration = Math.min(14, 5 + quote.length / 15);
-      
-      // For longer quotes, split into multiple bubbles
-      if (quote.length > 180) {
-        const chunks = splitQuoteIntoChunks(quote, 150);
-        chunks.forEach((chunk, index) => {
-          setTimeout(() => {
-            addBubble(chunk, duration);
-          }, index * 1000); // Stagger the appearance
-        });
+      // Skip quotes that are too long
+      if (quote.length > 100) {
         return;
       }
+      
+      // Adjust duration based on quote length
+      const duration = Math.min(12, 5 + quote.length / 15);
       
       addBubble(quote, duration);
     };
@@ -210,27 +178,4 @@ export default function FloatingQuotes({
       </AnimatePresence>
     </div>
   );
-}
-
-// Helper function to split long quotes into chunks
-function splitQuoteIntoChunks(quote: string, maxLength: number): string[] {
-  const chunks: string[] = [];
-  let currentIndex = 0;
-  
-  while (currentIndex < quote.length) {
-    // Find a good breaking point
-    let endIndex = Math.min(currentIndex + maxLength, quote.length);
-    if (endIndex < quote.length) {
-      // Try to break at a space
-      const spaceIndex = quote.lastIndexOf(' ', endIndex);
-      if (spaceIndex > currentIndex) {
-        endIndex = spaceIndex;
-      }
-    }
-    
-    chunks.push(quote.substring(currentIndex, endIndex));
-    currentIndex = endIndex + 1;
-  }
-  
-  return chunks;
 }

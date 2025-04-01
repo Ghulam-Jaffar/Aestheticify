@@ -9,12 +9,8 @@ import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas-pro"; // Use html2canvas-pro instead
 import { logEvent, AnalyticsEvents } from "@/utils/analytics";
-
-interface SpotifyTrackInfo {
-  name: string;
-  artist: string;
-  albumArt?: string;
-}
+import SocialShareButtons from "./SocialShareButtons";
+import { fetchTrackMetadata, SpotifyTrackInfo } from "@/utils/fetchTrackMetadata";
 
 interface ShareCardProps {
   id?: string;
@@ -48,33 +44,6 @@ export default function ShareVibeModal({
   const [imageError, setImageError] = useState(false);
   const [trackInfo, setTrackInfo] = useState<SpotifyTrackInfo | undefined>(
     initialTrackInfo
-  );
-
-  // Reusable function to fetch track metadata
-  const fetchTrackMetadata = useCallback(
-    async (trackUrl: string): Promise<SpotifyTrackInfo | undefined> => {
-      try {
-        // Extract track ID
-        const trackId = trackUrl.split("/track/")[1]?.split("?")[0];
-        if (!trackId) return undefined;
-
-        // Fetch track details from our API
-        const response = await fetch(`/api/spotify/track?id=${trackId}`);
-        const data = await response.json();
-
-        if (data.track) {
-          return {
-            name: data.track.name,
-            artist: data.track.artists?.[0]?.name || "Unknown Artist",
-            albumArt: data.track.album?.images?.[0]?.url,
-          };
-        }
-      } catch (error) {
-        console.error("Error fetching track info:", error);
-      }
-      return undefined;
-    },
-    []
   );
 
   // Reusable function to create a Spotify visual representation
@@ -147,7 +116,7 @@ export default function ShareVibeModal({
 
       loadTrackInfo();
     }
-  }, [trackUrl, trackInfo, fetchTrackMetadata]);
+  }, [trackUrl, trackInfo]);
 
   // Setup audio playback
   useEffect(() => {
@@ -230,6 +199,12 @@ export default function ShareVibeModal({
       if (qrCode) {
         qrCode.classList.add('hidden');
       }
+      
+      // Hide social buttons if visible
+      const socialButtons = cardRef.current.querySelector('.social-buttons');
+      if (socialButtons) {
+        socialButtons.classList.add('hidden');
+      }
 
       if (trackUrl) {
         // Find the Spotify iframe
@@ -273,6 +248,11 @@ export default function ShareVibeModal({
       // Show QR code again if it was visible
       if (qrCode) {
         qrCode.classList.remove('hidden');
+      }
+
+      // Show social buttons again if they were visible
+      if (socialButtons) {
+        socialButtons.classList.remove('hidden');
       }
 
       // Create a filename with date for better organization
@@ -422,6 +402,23 @@ export default function ShareVibeModal({
           {showQR ? "↩️ Hide QR" : "📱 Show QR"}
         </Button>
       </motion.div>
+
+      {/* Social share buttons */}
+      {id && (
+        <motion.div
+          className="mt-4 flex justify-center social-buttons"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <SocialShareButtons 
+            url={`${window.location.origin}/entry/${id}`}
+            title={displayTitle}
+            text={journal.substring(0, 100) + (journal.length > 100 ? "..." : "")}
+            className="justify-center"
+          />
+        </motion.div>
+      )}
 
       {/* QR Code */}
       <AnimatePresence>
