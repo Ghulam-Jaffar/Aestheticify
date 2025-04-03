@@ -110,6 +110,12 @@ export default function JournalCard({
           { linkToUser: false }
         );
 
+        // Mark this vibe as created in the current session
+        // This helps with security when updating creator info later
+        if (typeof window !== 'undefined' && window.sessionStorage) {
+          sessionStorage.setItem(`vibe_created_${savedVibeId}`, 'true');
+        }
+
         setVibeId(savedVibeId);
 
         // Notify parent component of vibeId change
