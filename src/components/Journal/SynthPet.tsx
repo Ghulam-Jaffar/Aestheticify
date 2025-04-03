@@ -1,19 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { motion, AnimatePresence, useMotionValue } from "framer-motion";
 
 const emojis = ["🐱", "🐰", "🦊", "🐸", "🐥", "🧸", "👾", "🌸"];
-const quotes = [
-  "Stay curious.",
-  "Vibe higher.",
-  "You are seen.",
-  "Glitch in peace.",
-  "Code the calm.",
-  "Be soft and strange.",
-  "Digital dreams.",
-  "Pixel perfect.",
-];
 
 // Pet states for different animations
 const petStates = {
@@ -33,15 +23,23 @@ interface Position {
 }
 
 export default function SynthPet({ theme = "dark" }: Props) {
-  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
-  const [target, setTarget] = useState<Position>({ x: 0, y: 0 });
+  // Use motion values for smoother animations without re-renders
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  // Use refs for values that don't need to trigger re-renders
+  const targetRef = useRef<Position>({ x: 0, y: 0 });
+  const positionRef = useRef<Position>({ x: 0, y: 0 });
+  const lastMoveRef = useRef(Date.now());
+  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const animationSeedRef = useRef<number[]>([]);
+  const animationFrameRef = useRef<number | null>(null);
+  
+  // State that needs to trigger re-renders
   const [emoji, setEmoji] = useState<string>("🐱");
   const [bubble, setBubble] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [petState, setPetState] = useState(petStates.IDLE);
-  const lastMoveRef = useRef(Date.now());
-  const idleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const animationSeedRef = useRef<number[]>([]);
 
   // Init safely after client mount
   useEffect(() => {
@@ -50,24 +48,38 @@ export default function SynthPet({ theme = "dark" }: Props) {
     
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight - 80;
-    setPosition({ x: centerX, y: centerY });
-    setTarget({ x: centerX, y: centerY });
+    
+    // Initialize position and target
+    positionRef.current = { x: centerX, y: centerY };
+    targetRef.current = { x: centerX, y: centerY };
+    
+    // Set motion values
+    x.set(centerX);
+    y.set(centerY);
     
     // Random emoji on mount - only on client side
     const randomIndex = Math.floor(animationSeedRef.current[0] * emojis.length);
     setEmoji(emojis[randomIndex]);
     
     setReady(true);
+    
+    // Start animation loop
+    startAnimationLoop();
+    
+    return () => {
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
-  // Smooth movement with dynamic easing
-  useEffect(() => {
-    if (!ready) return;
-    
-    const interval = setInterval(() => {
+  // Animation loop using requestAnimationFrame instead of setInterval
+  // This is more efficient and syncs with the browser's refresh rate
+  const startAnimationLoop = useCallback(() => {
+    const updatePosition = () => {
       // Calculate distance to target
-      const dx = target.x - position.x;
-      const dy = target.y - position.y;
+      const dx = targetRef.current.x - positionRef.current.x;
+      const dy = targetRef.current.y - positionRef.current.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
       // Dynamic easing based on distance
@@ -75,30 +87,30 @@ export default function SynthPet({ theme = "dark" }: Props) {
       const easing = Math.min(0.2, 0.05 + (distance / 1000));
       
       // Update position with easing
-      setPosition((prev) => {
-        const newX = prev.x + dx * easing;
-        const newY = prev.y + dy * easing;
+      if (distance > 0.5) {
+        positionRef.current.x += dx * easing;
+        positionRef.current.y += dy * easing;
         
-        // If we're very close to target, snap to it
-        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
-          return { x: target.x, y: target.y };
+        // Update motion values (this is optimized in framer-motion)
+        x.set(positionRef.current.x);
+        y.set(positionRef.current.y);
+        
+        // Update pet state based on movement (only when state would change)
+        if (distance > 50 && petState !== petStates.FOLLOWING) {
+          setPetState(petStates.FOLLOWING);
+        } else if (distance < 5 && petState === petStates.FOLLOWING) {
+          setPetState(petStates.IDLE);
         }
-        
-        return { x: newX, y: newY };
-      });
-      
-      // Update pet state based on movement
-      if (distance > 50) {
-        setPetState(petStates.FOLLOWING);
-      } else if (distance < 5 && petState === petStates.FOLLOWING) {
-        setPetState(petStates.IDLE);
       }
-    }, 16); // 60fps for smoother animation
+      
+      // Continue animation loop
+      animationFrameRef.current = requestAnimationFrame(updatePosition);
+    };
     
-    return () => clearInterval(interval);
-  }, [target, ready, position, petState]);
+    animationFrameRef.current = requestAnimationFrame(updatePosition);
+  }, [petState]);
 
-  // Mouse follow & idle behaviors
+  // Mouse follow & idle behaviors - optimized to reduce calculations
   useEffect(() => {
     if (!ready) return;
 
@@ -110,18 +122,18 @@ export default function SynthPet({ theme = "dark" }: Props) {
         clearTimeout(idleTimeoutRef.current);
       }
       
-      // Set target with slight offset to make it follow behind cursor
-      setTarget({ 
-        x: e.clientX - 32, 
-        y: e.clientY - 32 
-      });
+      // Set target with a significant offset to bottom-right of cursor
+      targetRef.current = { 
+        x: e.clientX + 40, 
+        y: e.clientY + 40 
+      };
       
-      // Briefly get excited when mouse moves quickly
-      const speed = Math.sqrt(
+      // Only update state for significant movements to reduce renders
+      const movementMagnitude = Math.sqrt(
         Math.pow(e.movementX, 2) + Math.pow(e.movementY, 2)
       );
       
-      if (speed > 20) {
+      if (movementMagnitude > 20 && petState !== petStates.EXCITED) {
         setPetState(petStates.EXCITED);
         // Return to following state after a short delay
         setTimeout(() => {
@@ -129,17 +141,15 @@ export default function SynthPet({ theme = "dark" }: Props) {
         }, 500);
       }
       
-      // Set timeout to go idle
+      // Debounced idle state change
       idleTimeoutRef.current = setTimeout(() => {
         setPetState(petStates.IDLE);
         
         // After longer inactivity, start wandering or sleeping
         setTimeout(() => {
           if (Date.now() - lastMoveRef.current > 10000) {
-            // Use consistent seed for randomness
             const randomValue = animationSeedRef.current[1];
             
-            // 50% chance to sleep, 50% chance to wander
             if (randomValue > 0.5) {
               setPetState(petStates.SLEEPING);
             } else {
@@ -147,21 +157,22 @@ export default function SynthPet({ theme = "dark" }: Props) {
               const seedX = animationSeedRef.current[2];
               const seedY = animationSeedRef.current[3];
               
-              const wanderX = position.x + ((seedX * 2 - 1) * 100);
-              const wanderY = position.y + ((seedY * 2 - 1) * 100);
+              const wanderX = positionRef.current.x + ((seedX * 2 - 1) * 100);
+              const wanderY = positionRef.current.y + ((seedY * 2 - 1) * 100);
               
               // Keep within viewport bounds
               const boundedX = Math.max(50, Math.min(window.innerWidth - 50, wanderX));
               const boundedY = Math.max(50, Math.min(window.innerHeight - 50, wanderY));
               
-              setTarget({ x: boundedX, y: boundedY });
+              targetRef.current = { x: boundedX, y: boundedY };
             }
           }
         }, 5000);
       }, 3000);
     };
 
-    window.addEventListener("mousemove", handleMove);
+    // Use passive event listener for better performance
+    window.addEventListener("mousemove", handleMove, { passive: true });
     
     // Initial idle behavior
     idleTimeoutRef.current = setTimeout(() => {
@@ -174,7 +185,7 @@ export default function SynthPet({ theme = "dark" }: Props) {
       }
       window.removeEventListener("mousemove", handleMove);
     };
-  }, [ready, position]);
+  }, [ready, petState]);
 
   // Change emoji on theme change
   useEffect(() => {
@@ -189,30 +200,10 @@ export default function SynthPet({ theme = "dark" }: Props) {
     }, 1000);
   }, [theme]);
 
-  const handleClick = () => {
-    // Generate a new random index each time for variety
-    const randomIndex = Math.floor(Math.random() * quotes.length);
-    const quote = quotes[randomIndex];
-    setBubble(quote);
-    
-    // Show excitement when clicked
-    setPetState(petStates.EXCITED);
-    
-    // Return to previous state after showing quote
-    setTimeout(() => {
-      setBubble(null);
-      setPetState(petStates.IDLE);
-    }, 3000);
-  };
-
   if (!ready) return null;
 
   // Get animation variants based on current pet state
   const getPetAnimationVariants = () => {
-    // Use consistent values for animations
-    const seed1 = animationSeedRef.current[6] || 0;
-    const seed2 = animationSeedRef.current[7] || 0;
-    
     switch (petState) {
       case petStates.FOLLOWING:
         return {
@@ -271,8 +262,8 @@ export default function SynthPet({ theme = "dark" }: Props) {
                 : "bg-white/20 text-white"
             }`}
             style={{
-              left: position.x - 60,
-              top: position.y - 60,
+              left: positionRef.current.x - 60,
+              top: positionRef.current.y - 60,
               boxShadow: theme === "light" 
                 ? "0 0 10px rgba(0,0,0,0.1)" 
                 : "0 0 10px rgba(255,255,255,0.1)",
@@ -285,15 +276,7 @@ export default function SynthPet({ theme = "dark" }: Props) {
 
       <motion.div
         className="fixed z-50"
-        onClick={handleClick}
-        style={{
-          x: position.x,
-          y: position.y,
-        }}
-        animate={{
-          x: position.x,
-          y: position.y,
-        }}
+        style={{ x, y }}
         transition={{
           type: "spring",
           damping: 20,
@@ -350,7 +333,7 @@ export default function SynthPet({ theme = "dark" }: Props) {
                   repeatType: "loop"
                 }}
               >
-                💤
+                ✨
               </motion.div>
             )}
           </AnimatePresence>

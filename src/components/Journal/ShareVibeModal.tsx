@@ -11,6 +11,8 @@ import html2canvas from "html2canvas-pro"; // Use html2canvas-pro instead
 import { logEvent, AnalyticsEvents } from "@/utils/analytics";
 import SocialShareButtons from "./SocialShareButtons";
 import { fetchTrackMetadata, SpotifyTrackInfo } from "@/utils/fetchTrackMetadata";
+import { doc, getDoc } from "firebase/firestore";
+import {db} from "@/lib/firebase";
 
 interface ShareCardProps {
   id?: string;
@@ -45,6 +47,8 @@ export default function ShareVibeModal({
   const [trackInfo, setTrackInfo] = useState<SpotifyTrackInfo | undefined>(
     initialTrackInfo
   );
+  const [creatorState, setCreator] = useState(creator);
+  const [titleState, setTitle] = useState(title);
 
   // Reusable function to create a Spotify visual representation
   const createSpotifyVisual = useCallback(
@@ -65,7 +69,7 @@ export default function ShareVibeModal({
       spotifyContainer.style.padding = "0 16px";
 
       // Use track info if available
-      const trackName = trackInfo?.name || title || "Unknown Track";
+      const trackName = trackInfo?.name || titleState || "Unknown Track";
       const artistName = trackInfo?.artist || "Spotify Track";
 
       // Create the content with track and artist info
@@ -101,7 +105,7 @@ export default function ShareVibeModal({
 
       return spotifyContainer;
     },
-    [title]
+    [titleState]
   );
 
   // Fetch track info if we have a trackUrl but no track info
@@ -117,6 +121,43 @@ export default function ShareVibeModal({
       loadTrackInfo();
     }
   }, [trackUrl, trackInfo]);
+
+  // Update creator information if not present
+  useEffect(() => {
+    const updateCreatorInfo = async () => {
+      if (id && !creatorState) {
+        try {
+          // Import dynamically to avoid circular dependencies
+          const { updateVibeCreator } = await import('@/utils/saveVibe');
+          const updated = await updateVibeCreator(id);
+          
+          // If we successfully updated the creator, refetch the vibe data
+          if (updated) {
+            // Fetch the updated vibe data from Firestore
+            const vibeRef = doc(db, "vibes", id);
+            const vibeDoc = await getDoc(vibeRef);
+            
+            if (vibeDoc.exists()) {
+              const vibeData = vibeDoc.data();
+              
+              // Update the creator state with the new data
+              if (vibeData.creator) {
+                setCreator(vibeData.creator);
+                
+                // Also update any other state that might have changed
+                if (vibeData.title) setTitle(vibeData.title);
+                if (vibeData.trackInfo) setTrackInfo(vibeData.trackInfo);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error updating creator info:", error);
+        }
+      }
+    };
+
+    updateCreatorInfo();
+  }, [id, creatorState, db]);
 
   // Setup audio playback
   useEffect(() => {
@@ -167,6 +208,15 @@ export default function ShareVibeModal({
   const toggleQRCode = () => {
     const newState = !showQR;
     setShowQR(newState);
+    // Scroll down to qr bottom when it's opened using scrollIntoView
+    setTimeout(() => {
+      if (newState) {
+        const qrCode = cardRef.current?.querySelector('.qr-code-container');
+        if (qrCode) {
+          qrCode.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }, 100)
     
     // Track QR code viewed event
     if (newState) {
@@ -317,14 +367,14 @@ export default function ShareVibeModal({
 
   // Use track name as title if available and no title is provided
   const displayTitle =
-    title ||
+    titleState ||
     vibe.quote ||
     (trackInfo ? `${trackInfo.name} - ${trackInfo.artist}` : "Journal Entry");
 
   return (
     <motion.div
       ref={cardRef}
-      className={`p-6 relative bg-black/80 text-white max-w-xl w-full rounded-2xl shadow-2xl backdrop-blur-3xl ${vibe.font} ${vibe.bg}`}
+      className={`p-6 relative bg-black/80 text-white max-w-xl w-full rounded-2xl shadow-2xl backdrop-blur-3xl overflow-auto h-full max-h-[calc(100vh_-_80px)] ${vibe.font} ${vibe.bg}`}
       initial="hidden"
       animate="visible"
       exit="exit"
@@ -337,12 +387,12 @@ export default function ShareVibeModal({
             {displayTitle}
           </h2>
           <p className="text-sm opacity-60">{displayDate}</p>
-          {creator && creator.displayName && (
+          {creatorState && creatorState.displayName && (
             <div className="flex items-center mt-2">
-              {creator.photoURL && !imageError ? (
+              {creatorState.photoURL && !imageError ? (
                 <img
-                  src={creator.photoURL}
-                  alt={creator.displayName}
+                  src={creatorState.photoURL}
+                  alt={creatorState.displayName}
                   className="w-5 h-5 rounded-full mr-2"
                   onError={() => setImageError(true)}
                   referrerPolicy="no-referrer"
@@ -350,11 +400,11 @@ export default function ShareVibeModal({
                 />
               ) : imageError ? (
                 <span className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mr-2 grid place-items-center text-xs">
-                  {creator.displayName?.charAt(0).toUpperCase() || "U"}
+                  {creatorState.displayName?.charAt(0).toUpperCase() || "U"}
                 </span>
               ) : null}
               <span className="text-sm opacity-60 truncate max-w-[150px]">
-                {creator.displayName}
+                {creatorState.displayName}
               </span>
             </div>
           )}

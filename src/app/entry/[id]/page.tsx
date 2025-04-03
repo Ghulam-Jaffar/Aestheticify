@@ -149,7 +149,7 @@ export default function SharedEntryPage() {
   return (
     <AnimatePresence mode="wait">
       <motion.div 
-        className="w-full h-screen flex items-center justify-center pt-16"
+        className="w-full h-screen flex items-center justify-center pt-16 overflow-hidden"
         key="entry-container"
         initial="hidden"
         animate="visible"
