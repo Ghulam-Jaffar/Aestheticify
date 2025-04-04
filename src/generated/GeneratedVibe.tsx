@@ -197,6 +197,8 @@ export default function GeneratedVibe({
     setShowEntry(false);
     setJournal(null);
     setLoading(true);
+    setVibeId(null); // Reset vibeId when generating a new journal
+    setHasJournalBeenSaved(false); // Reset saved state
 
     // Define a flag to track component mount state
     let isMounted = true;
@@ -420,6 +422,7 @@ export default function GeneratedVibe({
         {showEntry && journal && (
           <Modal onClose={toggleJournal} custom>
             <JournalCard
+              key={remixCount} // Add a key to the JournalCard component
               journal={journal}
               setJournal={setJournal}
               onClose={toggleJournal}

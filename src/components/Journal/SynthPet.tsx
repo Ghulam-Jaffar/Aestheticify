@@ -284,7 +284,7 @@ export default function SynthPet({ theme = "dark" }: Props) {
         }}
       >
         <motion.div
-          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out cursor-pointer hover:scale-110 
+          className={`w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 ease-in-out hover:scale-110 
             ${
               theme === "light"
                 ? "bg-black/10 text-black"
