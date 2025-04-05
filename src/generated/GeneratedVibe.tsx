@@ -276,22 +276,11 @@ export default function GeneratedVibe({
 
   // Handle audio playback when vibe.audio changes
   useEffect(() => {
-    // Clean up previous audio
-    if (soundRef.current) soundRef.current.unload();
+    // No longer handling audio here since it's managed by VibeLayout
+    // This prevents multiple audio sources playing simultaneously
     
-    // Create and play new audio
-    const sound = new Howl({
-      src: [vibe.audio],
-      loop: true,
-      volume: 0.5,
-    });
-    sound.play();
-    soundRef.current = sound;
-    
-    // Cleanup on unmount
-    return () => {
-      sound.unload();
-    };
+    // Return empty cleanup function to maintain the useEffect structure
+    return () => {};
   }, [vibe.audio]);
 
   // Handlers

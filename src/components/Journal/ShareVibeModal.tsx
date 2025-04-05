@@ -13,6 +13,7 @@ import SocialShareButtons from "./SocialShareButtons";
 import { fetchTrackMetadata, SpotifyTrackInfo } from "@/utils/fetchTrackMetadata";
 import { doc, getDoc } from "firebase/firestore";
 import {db} from "@/lib/firebase";
+import AudioToggle from "./AudioToggle";
 
 interface ShareCardProps {
   id?: string;
@@ -161,20 +162,11 @@ export default function ShareVibeModal({
 
   // Setup audio playback
   useEffect(() => {
-    if (!vibe.audio) return;
-
-    const sound = new Howl({
-      src: [vibe.audio],
-      loop: true,
-      volume: 0.5,
-    });
-
-    sound.play();
-    audioRef.current = sound;
-
-    return () => {
-      audioRef.current?.unload();
-    };
+    // No longer handling audio here since it's managed by AudioToggle
+    // This prevents multiple audio sources playing simultaneously
+    
+    // Return empty cleanup function to maintain the useEffect structure
+    return () => {};
   }, [vibe.audio]);
 
   // Handle copying the journal link
@@ -380,6 +372,12 @@ export default function ShareVibeModal({
       exit="exit"
       variants={modalVariants}
     >
+      {/* Audio toggle button */}
+      {vibe.audio && (
+        <div className="absolute top-4 right-4 z-50">
+          <AudioToggle src={vibe.audio} volume={0.5} theme="dark" />
+        </div>
+      )}
       <>
         {/* Title + Metadata */}
         <div className="mb-4">

@@ -205,14 +205,13 @@ export default function VibeLayout({
                 />
               </motion.div>
               
-              {showAudioToggle && (
-                <motion.div 
-                  variants={controlItemVariants}
-                  className="pointer-events-auto"
-                >
-                  <AudioToggle src={audio} volume={0.5} theme={theme} />
-                </motion.div>
-              )}
+              {/* Audio toggle - show on all pages */}
+              <motion.div 
+                variants={controlItemVariants}
+                className="pointer-events-auto"
+              >
+                <AudioToggle src={audio} volume={0.5} theme={theme} />
+              </motion.div>
               
               <motion.div 
                 variants={controlItemVariants}
@@ -228,30 +227,31 @@ export default function VibeLayout({
                 <FloatingQuotes theme={theme} />
               </motion.div>
 
-              <motion.div 
-                variants={controlItemVariants}
-                className="absolute bottom-6 left-6 pointer-events-auto"
-              >
-                <motion.div
-                  variants={buttonVariants}
-                  whileHover="hover"
-                  whileTap="tap"
+              {/* Auto-cycle button - hide on random page */}
+              {current !== "random" && (
+                <motion.div 
+                  variants={controlItemVariants}
+                  className="absolute bottom-6 left-6 pointer-events-auto"
                 >
-                  <Button
-                    onClick={() => setCycleMode(!cycleMode)}
-                    theme={theme}
-                    className={`
-                      transition-all duration-300
-                      ${cycleMode ? "ring-2" : ""}
-                      ${theme === "light" ? "ring-black" : "ring-white"}
-                    `}
+                  <motion.div
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
-                    {cycleMode ? "🔄 Auto-cycling ON" : "⏸️ Auto-cycling OFF"}
-                  </Button>
+                    <Button
+                      onClick={() => setCycleMode(!cycleMode)}
+                      theme={theme}
+                      className={`
+                        transition-all duration-300
+                        ${cycleMode ? "ring-2" : ""}
+                        ${theme === "light" ? "ring-black" : "ring-white"}
+                      `}
+                    >
+                      {cycleMode ? "🔄 Auto-cycling ON" : "⏸️ Auto-cycling OFF"}
+                    </Button>
+                  </motion.div>
                 </motion.div>
-              </motion.div>
-
-              
+              )}
             </motion.div>
           </motion.div>
         )}
